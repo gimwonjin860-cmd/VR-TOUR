@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SKP - VR Tour Editor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--black:#111;--white:#fff;--g50:#fafafa;--g100:#f5f5f5;--g200:#e5e5e5;--g300:#d4d4d4;--g400:#a3a3a3;--g500:#737373;--g600:#525252}
+body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--white);color:var(--black);height:100vh;overflow:hidden;display:flex;-webkit-font-smoothing:antialiased}
+
+.sidebar{width:272px;min-width:272px;background:var(--white);border-right:1px solid var(--g200);display:flex;flex-direction:column;z-index:50}
+.sidebar-header{padding:20px 20px 16px;border-bottom:1px solid var(--g200);display:flex;align-items:center;justify-content:space-between}
+.sidebar-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:600}
+.sidebar-back{font-size:13px;font-weight:500;color:var(--g500);background:none;border:none;cursor:pointer;font-family:inherit}
+.sidebar-back:hover{color:var(--black)}
+.sidebar-section{padding:16px 20px 8px}
+.sidebar-section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--g400)}
+.scene-list{flex:1;overflow-y:auto;padding:4px 8px}
+.scene-list::-webkit-scrollbar{width:3px}
+.scene-list::-webkit-scrollbar-thumb{background:var(--g300);border-radius:3px}
+.scene-card{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:all .12s;margin-bottom:2px}
+.scene-card:hover{background:var(--g50)}
+.scene-card.active{background:var(--g100)}
+.scene-thumb{width:52px;height:34px;border-radius:4px;overflow:hidden;flex-shrink:0;background:var(--g100)}
+.scene-thumb img{width:100%;height:100%;object-fit:cover}
+.scene-info{flex:1;min-width:0}
+.scene-name-input{background:transparent;border:none;color:var(--black);font-family:inherit;font-size:13px;font-weight:500;width:100%;outline:none;padding:2px 0;border-bottom:1px solid transparent}
+.scene-name-input:focus{border-bottom-color:var(--black)}
+.scene-meta{font-size:11px;color:var(--g400);margin-top:1px}
+.scene-res{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;display:inline-block}
+.scene-res.low{background:#fef3c7;color:#92400e}
+.scene-res.mid{background:var(--g100);color:var(--g600)}
+.scene-res.high{background:#f0fdf4;color:#166534}
+.scene-delete{opacity:0;width:22px;height:22px;border:none;background:transparent;color:var(--g400);border-radius:4px;cursor:pointer;font-size:12px;transition:opacity .12s;display:flex;align-items:center;justify-content:center}
+.scene-card:hover .scene-delete{opacity:1}
+.scene-delete:hover{color:#dc2626}
+.upload-btn{margin:8px 16px 16px;padding:10px;background:var(--black);color:var(--white);border:none;border-radius:100px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.upload-btn:hover{opacity:.85}
+
+.viewport{flex:1;position:relative;overflow:hidden;background:var(--g100)}
+#canvas-container{width:100%;height:100%;cursor:grab}
+#canvas-container:active{cursor:grabbing}
+#canvas-container.crosshair{cursor:crosshair!important}
+
+.mode-bar{position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-radius:100px;padding:4px;gap:4px;border:1px solid var(--g200);z-index:20}
+.mode-btn{padding:7px 20px;border:none;background:transparent;color:var(--g500);font-family:inherit;font-size:13px;font-weight:500;border-radius:100px;cursor:pointer;transition:all .15s}
+.mode-btn:hover{color:var(--black)}
+.mode-btn.active{background:var(--black);color:var(--white)}
+
+.res-banner{position:absolute;top:60px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border:1px solid #fbbf24;border-radius:100px;padding:6px 16px;font-size:12px;color:#92400e;z-index:20;display:none;align-items:center;gap:6px;font-weight:500}
+
+.hotspot-marker{position:absolute;transform:translate(-50%,-50%);z-index:10;pointer-events:auto;cursor:pointer;transition:transform .2s cubic-bezier(.34,1.56,.64,1)}
+.hotspot-marker:hover{transform:translate(-50%,-50%) scale(1.12)}
+.hs-dot{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative}
+.hs-dot.link{background:rgba(17,17,17,.2);border:2px solid rgba(255,255,255,.8);backdrop-filter:blur(4px)}
+.hs-dot.info{background:rgba(17,17,17,.15);border:2px solid rgba(255,255,255,.7);backdrop-filter:blur(4px)}
+.hs-dot svg{width:18px;height:18px;fill:var(--white)}
+.hs-ring{position:absolute;inset:-6px;border-radius:50%;border:1.5px solid rgba(255,255,255,.35);animation:rp 2.5s ease-in-out infinite}
+@keyframes rp{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:0;transform:scale(1.3)}}
+.hs-label{position:absolute;top:50px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;font-weight:500;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);color:var(--black);padding:3px 10px;border-radius:100px;pointer-events:none;border:1px solid var(--g200)}
+
+.right-panel{width:288px;min-width:288px;background:var(--white);border-left:1px solid var(--g200);display:flex;flex-direction:column;z-index:50;transition:transform .3s}
+.right-panel.hidden{transform:translateX(100%);position:absolute;right:0;top:0;bottom:0}
+.panel-header{padding:20px;border-bottom:1px solid var(--g200);display:flex;align-items:center;justify-content:space-between}
+.panel-header h2{font-size:14px;font-weight:700}
+.panel-close{width:26px;height:26px;border:1px solid var(--g200);background:transparent;color:var(--g400);border-radius:6px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
+.panel-close:hover{color:var(--black);border-color:var(--g300)}
+.panel-body{flex:1;padding:20px;overflow-y:auto}
+.field-group{margin-bottom:16px}
+.field-label{display:block;font-size:11px;font-weight:600;color:var(--g400);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.field-input{width:100%;padding:9px 12px;background:var(--g50);border:1.5px solid var(--g200);border-radius:6px;color:var(--black);font-family:inherit;font-size:13px;outline:none;transition:border-color .15s}
+.field-input:focus{border-color:var(--black)}
+select.field-input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%23111'%3E%3Cpath d='M5 7L0 2h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.hotspot-type-btns{display:flex;gap:6px}
+.type-btn{flex:1;padding:10px 8px;border:1.5px solid var(--g200);background:var(--white);border-radius:8px;cursor:pointer;text-align:center;transition:all .15s;font-family:inherit;color:var(--g500)}
+.type-btn:hover{border-color:var(--g400);color:var(--black)}
+.type-btn.active{border-color:var(--black);background:var(--black);color:var(--white)}
+.type-btn-icon{font-size:18px;margin-bottom:2px}
+.type-btn-label{font-size:11px;font-weight:600}
+.panel-actions{padding:14px 20px;border-top:1px solid var(--g200);display:flex;gap:8px}
+.btn{flex:1;padding:9px;border:none;border-radius:100px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-primary{background:var(--black);color:var(--white)}
+.btn-primary:hover{opacity:.85}
+.btn-danger{background:#fef2f2;color:#dc2626}
+.btn-danger:hover{background:#fee2e2}
+.btn-secondary{background:var(--g100);color:var(--black);border:1px solid var(--g200)}
+.btn-secondary:hover{background:var(--g200)}
+
+.hs-list-item{display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--g50);border-radius:8px;margin-bottom:4px;cursor:pointer;transition:all .12s;border:1px solid transparent}
+.hs-list-item:hover{border-color:var(--g200)}
+.hs-list-item.active{border-color:var(--black);background:var(--g100)}
+.hs-list-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;background:var(--g100)}
+.hs-list-info{flex:1;min-width:0}
+.hs-list-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hs-list-detail{font-size:10px;color:var(--g400)}
+.hs-list-delete{width:22px;height:22px;border:none;background:transparent;color:var(--g400);border-radius:4px;cursor:pointer;font-size:12px;opacity:0;transition:all .12s;display:flex;align-items:center;justify-content:center}
+.hs-list-item:hover .hs-list-delete{opacity:1}
+.hs-list-delete:hover{color:#dc2626}
+
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:40px}
+.empty-icon{font-size:48px;margin-bottom:16px;opacity:.3}
+.empty-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;margin-bottom:8px}
+.empty-desc{font-size:13px;color:var(--g400);line-height:1.6;margin-bottom:24px}
+
+.fade-overlay{position:absolute;inset:0;background:var(--white);z-index:15;opacity:0;pointer-events:none;transition:opacity .35s}
+.fade-overlay.active{opacity:1;pointer-events:auto}
+
+.toast{position:absolute;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--black);color:var(--white);padding:10px 20px;border-radius:100px;font-size:13px;font-weight:500;z-index:30;opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.coord-display{font-size:11px;color:var(--g400);background:var(--g50);padding:6px 10px;border-radius:6px;display:flex;gap:16px;border:1px solid var(--g200)}
+.info-popup{position:absolute;transform:translate(-50%,-100%);margin-top:-60px;background:var(--white);border:1px solid var(--g200);border-radius:10px;padding:14px;max-width:240px;z-index:25;box-shadow:0 8px 30px rgba(0,0,0,.1);pointer-events:auto}
+.info-popup h4{font-size:13px;font-weight:700;margin-bottom:4px}
+.info-popup p{font-size:12px;color:var(--g500);line-height:1.5}
+.info-popup-close{position:absolute;top:8px;right:8px;width:18px;height:18px;border:none;background:transparent;color:var(--g400);cursor:pointer;font-size:12px}
+.info-textarea{width:100%;min-height:72px;padding:9px 12px;background:var(--g50);border:1.5px solid var(--g200);border-radius:6px;color:var(--black);font-family:inherit;font-size:13px;outline:none;resize:vertical}
+.info-textarea:focus{border-color:var(--black)}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.2);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--white);border:1px solid var(--g200);border-radius:12px;padding:32px;width:480px;max-width:90vw;box-shadow:0 16px 48px rgba(0,0,0,.1)}
+.modal h2{font-family:'Playfair Display',serif;font-size:20px;font-weight:500;margin-bottom:8px}
+.modal p{font-size:13px;color:var(--g500);margin-bottom:20px}
+.modal textarea{width:100%;height:180px;background:var(--g50);border:1px solid var(--g200);border-radius:8px;color:var(--black);font-family:monospace;font-size:11px;padding:12px;outline:none;resize:vertical;margin-bottom:16px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-title">VR Tour Editor</span>
+    <button class="sidebar-back" onclick="window.location.href='index.html'">← 목록</button>
+  </div>
+  <div class="sidebar-section"><div class="sidebar-section-title">장면 목록</div></div>
+  <div class="scene-list" id="scene-list"></div>
+  <button class="upload-btn" id="add-scene-btn">+ 360° 이미지 추가</button>
+  <input type="file" id="file-input" accept="image/*" multiple style="display:none;">
+</div>
+
+<div class="viewport" id="viewport">
+  <div id="canvas-container"></div>
+  <div class="fade-overlay" id="fade-overlay"></div>
+  <div class="mode-bar" id="mode-bar" style="display:none;">
+    <button class="mode-btn active" data-mode="preview" id="btn-preview">미리보기</button>
+    <button class="mode-btn" data-mode="edit" id="btn-edit">편집</button>
+    <button class="mode-btn" data-mode="add" id="btn-add">포인트 추가</button>
+  </div>
+  <div class="res-banner" id="res-banner">⚠ 낮은 해상도 (<span id="res-info"></span>) — 4096×2048 이상 권장</div>
+  <button class="btn btn-secondary" id="export-btn" style="position:absolute;top:16px;right:16px;z-index:20;display:none;flex:none;padding:8px 18px;border-radius:100px;">내보내기</button>
+  <div class="toast" id="toast"></div>
+  <div class="empty-state" id="empty-state">
+    <div class="empty-icon">🌐</div>
+    <div class="empty-title">Add 360° Images</div>
+    <div class="empty-desc">equirectangular 형식의 파노라마 이미지를<br>왼쪽 하단 버튼이나 여기에 드래그하세요<br><br><span style="font-size:11px;color:var(--g300)">최소 4096×2048 (4K) 이상 권장</span></div>
+    <button class="btn btn-primary" style="flex:none;padding:10px 28px;border-radius:100px" onclick="document.getElementById('file-input').click()">이미지 선택</button>
+  </div>
+</div>
+
+<div class="right-panel hidden" id="right-panel">
+  <div class="panel-header"><h2 id="panel-title">핫스팟 편집</h2><button class="panel-close" id="panel-close">✕</button></div>
+  <div class="panel-body" id="panel-editor" style="display:none">
+    <div class="field-group"><span class="field-label">유형</span>
+      <div class="hotspot-type-btns">
+        <button class="type-btn active" id="type-link"><div class="type-btn-icon">→</div><div class="type-btn-label">장면 이동</div></button>
+        <button class="type-btn" id="type-info"><div class="type-btn-icon">i</div><div class="type-btn-label">정보 팝업</div></button>
+      </div>
+    </div>
+    <div class="field-group"><label class="field-label">라벨</label><input class="field-input" id="hs-label" placeholder="예: 거실로 이동"></div>
+    <div class="field-group" id="target-group"><label class="field-label">이동할 장면</label><select class="field-input" id="hs-target"></select></div>
+    <div class="field-group" id="info-group" style="display:none"><label class="field-label">팝업 내용</label><textarea class="info-textarea" id="hs-info-content" placeholder="표시할 정보를 입력하세요..."></textarea></div>
+    <div class="field-group"><span class="field-label">위치</span><div class="coord-display"><span>위도: <b id="coord-lat">0</b>°</span><span>경도: <b id="coord-lon">0</b>°</span></div></div>
+  </div>
+  <div class="panel-body" id="panel-list">
+    <div class="sidebar-section-title" style="padding:0;margin-bottom:10px">현재 장면의 핫스팟</div>
+    <div id="hs-list-container"><p style="font-size:12px;color:var(--g400);text-align:center;padding:20px 0">핫스팟이 없습니다.<br>"포인트 추가" 모드에서 클릭하세요.</p></div>
+  </div>
+  <div class="panel-actions" id="panel-actions" style="display:none">
+    <button class="btn btn-danger" id="hs-delete">삭제</button>
+    <button class="btn btn-primary" id="hs-save">저장</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="export-modal">
+  <div class="modal">
+    <h2>Export Tour</h2>
+    <p>이미지와 핫스팟이 포함된 HTML 파일을 다운로드합니다.</p>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn btn-primary" id="export-html-btn" style="padding:12px 20px;border-radius:100px">HTML 다운로드</button>
+      <button class="btn btn-secondary" id="export-json-btn" style="padding:12px 20px;border-radius:100px">JSON 복사</button>
+    </div>
+    <div id="export-progress" style="display:none;font-size:13px;color:var(--g500);padding:8px 0"></div>
+    <textarea id="export-data" readonly style="display:none"></textarea>
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="document.getElementById('export-modal').classList.remove('show');document.getElementById('export-data').style.display='none'">닫기</button></div>
+  </div>
+</div>
+
+<script>
+const APP={scenes:[],currentScene:-1,mode:'preview',editingHotspot:null,nextId:1};
+let camera,scene3,renderer,sphere,sphereMaterial;
+const container=document.getElementById('canvas-container');
+let drag={active:false,moved:false,startX:0,startY:0,startLon:0,startLat:0};
+let viewLon=0,viewLat=0;
+
+function initThree(){
+  scene3=new THREE.Scene();scene3.background=new THREE.Color(0xf5f5f5);
+  camera=new THREE.PerspectiveCamera(60,container.clientWidth/container.clientHeight,0.1,1000);
+  camera.position.set(0,0,0.1);
+  renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(container.clientWidth,container.clientHeight);
+  renderer.toneMapping=THREE.NoToneMapping;
+  renderer.outputEncoding=THREE.sRGBEncoding;
+  container.appendChild(renderer.domElement);
+  const geo=new THREE.SphereGeometry(500,120,80);geo.scale(-1,1,1);
+  sphereMaterial=new THREE.MeshBasicMaterial({color:0xf5f5f5});
+  sphere=new THREE.Mesh(geo,sphereMaterial);scene3.add(sphere);
+  window.addEventListener('resize',()=>{camera.aspect=container.clientWidth/container.clientHeight;camera.updateProjectionMatrix();renderer.setSize(container.clientWidth,container.clientHeight)});
+  setupControls();animate();
+}
+
+function setupControls(){
+  const el=renderer.domElement;
+  el.addEventListener('pointerdown',e=>{drag.active=true;drag.moved=false;drag.startX=e.clientX;drag.startY=e.clientY;drag.startLon=viewLon;drag.startLat=viewLat});
+  document.addEventListener('pointermove',e=>{if(!drag.active)return;if(Math.abs(e.clientX-drag.startX)>3||Math.abs(e.clientY-drag.startY)>3)drag.moved=true;viewLon=(drag.startX-e.clientX)*.15+drag.startLon;viewLat=(e.clientY-drag.startY)*.15+drag.startLat;viewLat=Math.max(-85,Math.min(85,viewLat))});
+  document.addEventListener('pointerup',()=>{drag.active=false});
+  el.addEventListener('wheel',e=>{e.preventDefault();camera.fov=Math.max(20,Math.min(90,camera.fov+e.deltaY*.04));camera.updateProjectionMatrix()},{passive:false});
+  el.addEventListener('click',e=>{
+    if(APP.mode!=='add'||APP.currentScene<0||drag.moved)return;
+    const rect=container.getBoundingClientRect(),x=((e.clientX-rect.left)/rect.width)*2-1,y=-((e.clientY-rect.top)/rect.height)*2+1;
+    const rc=new THREE.Raycaster();rc.setFromCamera(new THREE.Vector2(x,y),camera);
+    const its=rc.intersectObject(sphere);
+    if(its.length>0){const p=its[0].point;addHotspot(90-THREE.MathUtils.radToDeg(Math.acos(p.y/500)),THREE.MathUtils.radToDeg(Math.atan2(p.z,p.x)));}
+  });
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  const phi=THREE.MathUtils.degToRad(90-viewLat),theta=THREE.MathUtils.degToRad(viewLon);
+  camera.lookAt(Math.sin(phi)*Math.cos(theta)*100,Math.cos(phi)*100,Math.sin(phi)*Math.sin(theta)*100);
+  renderer.render(scene3,camera);updateHotspotPositions();
+}
+
+// === SCENES ===
+function addSceneFromFile(file){
+  return new Promise(resolve=>{
+    const reader=new FileReader();reader.onload=e=>{
+      const img=new Image();img.onload=()=>{
+        const id=APP.nextId++;
+        APP.scenes.push({id,name:file.name.replace(/\.[^.]+$/,''),imageData:e.target.result,width:img.naturalWidth,height:img.naturalHeight,hotspots:[]});
+        resolve(id);
+      };img.src=e.target.result;
+    };reader.readAsDataURL(file);
+  });
+}
+
+function loadSceneView(index){
+  if(index<0||index>=APP.scenes.length)return;
+  const overlay=document.getElementById('fade-overlay');overlay.classList.add('active');
+  setTimeout(()=>{
+    APP.currentScene=index;const sc=APP.scenes[index];
+    const img=new Image();img.onload=()=>{
+      const tex=new THREE.Texture(img);tex.encoding=THREE.sRGBEncoding;tex.minFilter=THREE.LinearFilter;tex.magFilter=THREE.LinearFilter;tex.generateMipmaps=false;tex.anisotropy=renderer.capabilities.getMaxAnisotropy();tex.needsUpdate=true;
+      if(sphereMaterial.map)sphereMaterial.map.dispose();sphereMaterial.map=tex;sphereMaterial.color.set(0xffffff);sphereMaterial.needsUpdate=true;
+    };img.src=sc.imageData;
+    const banner=document.getElementById('res-banner');
+    if(sc.width<4096){document.getElementById('res-info').textContent=sc.width+'×'+sc.height;banner.style.display='flex';}else banner.style.display='none';
+    APP.editingHotspot=null;closeEditor();renderSceneList();renderHotspotList();
+    document.getElementById('empty-state').style.display='none';
+    document.getElementById('mode-bar').style.display='flex';
+    document.getElementById('export-btn').style.display='flex';
+    setTimeout(()=>overlay.classList.remove('active'),100);
+  },350);
+}
+
+function deleteScene(index){
+  const removed=APP.scenes.splice(index,1)[0];
+  APP.scenes.forEach(sc=>{sc.hotspots=sc.hotspots.filter(h=>h.target!==removed.id)});
+  if(!APP.scenes.length){
+    APP.currentScene=-1;if(sphereMaterial.map)sphereMaterial.map.dispose();sphereMaterial.map=null;sphereMaterial.color.set(0xf5f5f5);sphereMaterial.needsUpdate=true;
+    document.getElementById('empty-state').style.display='flex';document.getElementById('mode-bar').style.display='none';document.getElementById('export-btn').style.display='none';document.getElementById('res-banner').style.display='none';
+  }else loadSceneView(Math.min(index,APP.scenes.length-1));
+  renderSceneList();
+}
+
+// === HOTSPOTS ===
+function addHotspot(lat,lon){const sc=APP.scenes[APP.currentScene];if(!sc)return;const id=APP.nextId++;sc.hotspots.push({id,type:'link',label:'새 포인트',lat,lon,target:null,info:''});renderHotspotList();openEditor(id);showToast('포인트 추가됨');}
+function deleteHotspot(hsId){const sc=APP.scenes[APP.currentScene];if(!sc)return;sc.hotspots=sc.hotspots.filter(h=>h.id!==hsId);if(APP.editingHotspot===hsId)closeEditor();renderHotspotList();}
+function getHotspot(hsId){const sc=APP.scenes[APP.currentScene];return sc?sc.hotspots.find(h=>h.id===hsId):null;}
+
+let hotspotEls=[];
+function renderHotspotMarkers(){
+  hotspotEls.forEach(el=>el.remove());hotspotEls=[];
+  document.querySelectorAll('.info-popup').forEach(el=>el.remove());
+  const sc=APP.scenes[APP.currentScene];if(!sc)return;
+  sc.hotspots.forEach(hs=>{
+    const el=document.createElement('div');el.className='hotspot-marker';
+    const isL=hs.type==='link';
+    el.innerHTML='<div class="hs-dot '+(isL?'link':'info')+'"><div class="hs-ring"></div>'+(isL?'<svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>':'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#fff" stroke-width="2"/><path d="M12 16v-4M12 8h.01" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>')+'</div><div class="hs-label">'+(hs.label||'포인트')+'</div>';
+    el.addEventListener('click',e=>{e.stopPropagation();
+      if(APP.mode==='preview'){
+        if(hs.type==='link'&&hs.target!=null){const idx=APP.scenes.findIndex(s=>s.id===hs.target);if(idx>=0)loadSceneView(idx);}
+        else if(hs.type==='info'){document.querySelectorAll('.info-popup').forEach(p=>p.remove());const popup=document.createElement('div');popup.className='info-popup';popup.innerHTML='<button class="info-popup-close" onclick="this.parentElement.remove()">✕</button><h4>'+(hs.label||'정보')+'</h4><p>'+(hs.info||'')+'</p>';popup.style.left=el.style.left;popup.style.top=el.style.top;container.appendChild(popup);}
+      }else openEditor(hs.id);
+    });
+    el._hs=hs;container.appendChild(el);hotspotEls.push(el);
+  });
+}
+
+function updateHotspotPositions(){
+  hotspotEls.forEach(el=>{const hs=el._hs,phi=THREE.MathUtils.degToRad(90-hs.lat),theta=THREE.MathUtils.degToRad(hs.lon);
+    const dir=new THREE.Vector3(Math.sin(phi)*Math.cos(theta),Math.cos(phi),Math.sin(phi)*Math.sin(theta));
+    const camDir=new THREE.Vector3();camera.getWorldDirection(camDir);const dot=dir.dot(camDir);
+    if(dot>0.05){const proj=dir.clone().multiplyScalar(100).project(camera);const rect=container.getBoundingClientRect();el.style.left=((proj.x*.5+.5)*rect.width)+'px';el.style.top=((-proj.y*.5+.5)*rect.height)+'px';el.style.display='block';el.style.opacity=Math.min(1,(dot-.05)*5);}
+    else el.style.display='none';
+  });
+}
+
+// === PANEL ===
+function openEditor(hsId){
+  APP.editingHotspot=hsId;const hs=getHotspot(hsId);if(!hs)return;
+  document.getElementById('right-panel').classList.remove('hidden');
+  document.getElementById('panel-editor').style.display='block';
+  document.getElementById('panel-list').style.display='none';
+  document.getElementById('panel-actions').style.display='flex';
+  document.getElementById('panel-title').textContent='핫스팟 편집';
+  document.getElementById('type-link').classList.toggle('active',hs.type==='link');
+  document.getElementById('type-info').classList.toggle('active',hs.type==='info');
+  document.getElementById('target-group').style.display=hs.type==='link'?'':'none';
+  document.getElementById('info-group').style.display=hs.type==='info'?'':'none';
+  document.getElementById('hs-label').value=hs.label||'';
+  const sel=document.getElementById('hs-target');sel.innerHTML='<option value="">— 선택 —</option>';
+  APP.scenes.forEach(sc=>{if(sc.id===APP.scenes[APP.currentScene].id)return;const opt=document.createElement('option');opt.value=sc.id;opt.textContent=sc.name;if(hs.target===sc.id)opt.selected=true;sel.appendChild(opt);});
+  document.getElementById('hs-info-content').value=hs.info||'';
+  document.getElementById('coord-lat').textContent=hs.lat.toFixed(1);
+  document.getElementById('coord-lon').textContent=hs.lon.toFixed(1);
+}
+function closeEditor(){APP.editingHotspot=null;document.getElementById('panel-editor').style.display='none';document.getElementById('panel-list').style.display='block';document.getElementById('panel-actions').style.display='none';document.getElementById('panel-title').textContent='핫스팟 목록';}
+function saveEditor(){const hs=getHotspot(APP.editingHotspot);if(!hs)return;hs.label=document.getElementById('hs-label').value||'포인트';hs.type=document.getElementById('type-link').classList.contains('active')?'link':'info';if(hs.type==='link'){const v=document.getElementById('hs-target').value;hs.target=v?parseInt(v):null;}hs.info=document.getElementById('hs-info-content').value;renderHotspotMarkers();renderHotspotList();closeEditor();showToast('저장됨');}
+
+// === UI ===
+function getResClass(w){return w>=8192?'high':w>=4096?'mid':'low';}
+function getResLabel(w,h){return w>=8192?'8K+':w>=4096?'4K':w+'×'+h;}
+
+function renderSceneList(){
+  const list=document.getElementById('scene-list');list.innerHTML='';
+  APP.scenes.forEach((sc,i)=>{
+    const card=document.createElement('div');card.className='scene-card'+(i===APP.currentScene?' active':'');
+    card.innerHTML='<div class="scene-thumb"><img src="'+sc.imageData+'"></div><div class="scene-info"><input class="scene-name-input" value="'+sc.name+'"><div class="scene-meta">'+sc.hotspots.length+'개 포인트 <span class="scene-res '+getResClass(sc.width)+'">'+getResLabel(sc.width,sc.height)+'</span></div></div><button class="scene-delete">✕</button>';
+    card.addEventListener('click',e=>{if(e.target.closest('.scene-delete')||e.target.closest('.scene-name-input'))return;loadSceneView(i);});
+    card.querySelector('.scene-name-input').addEventListener('change',e=>{APP.scenes[i].name=e.target.value;});
+    card.querySelector('.scene-name-input').addEventListener('click',e=>e.stopPropagation());
+    card.querySelector('.scene-delete').addEventListener('click',e=>{e.stopPropagation();deleteScene(i);});
+    list.appendChild(card);
+  });
+}
+
+function renderHotspotList(){
+  const sc=APP.scenes[APP.currentScene],cont=document.getElementById('hs-list-container');
+  if(!sc||!sc.hotspots.length){cont.innerHTML='<p style="font-size:12px;color:var(--g400);text-align:center;padding:20px 0">핫스팟이 없습니다.<br>"포인트 추가" 모드에서 클릭하세요.</p>';renderHotspotMarkers();return;}
+  cont.innerHTML='';
+  sc.hotspots.forEach(hs=>{
+    const item=document.createElement('div');item.className='hs-list-item'+(APP.editingHotspot===hs.id?' active':'');
+    const isL=hs.type==='link',tn=isL&&hs.target?(APP.scenes.find(s=>s.id===hs.target)?.name||'?'):'';
+    item.innerHTML='<div class="hs-list-icon">'+(isL?'→':'i')+'</div><div class="hs-list-info"><div class="hs-list-name">'+(hs.label||'포인트')+'</div><div class="hs-list-detail">'+(isL?('→ '+(tn||'미설정')):'정보 팝업')+'</div></div><button class="hs-list-delete">✕</button>';
+    item.addEventListener('click',e=>{if(e.target.closest('.hs-list-delete'))return;openEditor(hs.id);});
+    item.querySelector('.hs-list-delete').addEventListener('click',e=>{e.stopPropagation();deleteHotspot(hs.id);});
+    cont.appendChild(item);
+  });
+  renderHotspotMarkers();
+}
+
+function setMode(mode){
+  APP.mode=mode;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
+  document.getElementById('canvas-container').classList.toggle('crosshair',mode==='add');
+  if(mode==='add'){showToast('360° 뷰를 클릭하여 포인트 추가');document.getElementById('right-panel').classList.remove('hidden');closeEditor();}
+  else if(mode==='edit'){document.getElementById('right-panel').classList.remove('hidden');closeEditor();}
+  else{closeEditor();document.getElementById('right-panel').classList.add('hidden');}
+  renderHotspotMarkers();
+}
+
+// === FILES ===
+document.getElementById('add-scene-btn').addEventListener('click',()=>document.getElementById('file-input').click());
+document.getElementById('file-input').addEventListener('change',async e=>{const files=[...e.target.files].filter(f=>f.type.startsWith('image/'));for(const f of files)await addSceneFromFile(f);renderSceneList();if(APP.currentScene<0)loadSceneView(0);showToast(files.length+'개 이미지 추가됨');e.target.value='';});
+document.getElementById('viewport').addEventListener('dragover',e=>e.preventDefault());
+document.getElementById('viewport').addEventListener('drop',async e=>{e.preventDefault();const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));for(const f of files)await addSceneFromFile(f);renderSceneList();if(APP.currentScene<0)loadSceneView(0);showToast(files.length+'개 이미지 추가됨');});
+
+// === EXPORT ===
+document.getElementById('export-btn').addEventListener('click',()=>document.getElementById('export-modal').classList.add('show'));
+document.getElementById('export-json-btn').addEventListener('click',()=>{
+  const data=APP.scenes.map(sc=>({name:sc.name,width:sc.width,height:sc.height,hotspots:sc.hotspots.map(h=>({type:h.type,label:h.label,lat:h.lat,lon:h.lon,targetSceneName:h.target?APP.scenes.find(s=>s.id===h.target)?.name||null:null,info:h.info||''}))}));
+  const ta=document.getElementById('export-data');ta.style.display='block';ta.value=JSON.stringify(data,null,2);ta.select();document.execCommand('copy');showToast('JSON 복사됨');
+});
+document.getElementById('export-html-btn').addEventListener('click',()=>{
+  const prog=document.getElementById('export-progress');prog.style.display='block';prog.textContent='⏳ 파일 생성 중...';
+  setTimeout(()=>{
+    const es=APP.scenes.map((sc,i)=>({id:i,name:sc.name,image:sc.imageData,hotspots:sc.hotspots.map(h=>({type:h.type,label:h.label,lat:h.lat,lon:h.lon,target:h.target!=null?APP.scenes.findIndex(s=>s.id===h.target):-1,info:h.info||''}))}));
+    const html=genViewer(es);const blob=new Blob([html],{type:'text/html;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='vr-tour.html';a.click();URL.revokeObjectURL(url);
+    prog.textContent='✅ 완료!';setTimeout(()=>prog.style.display='none',2000);showToast('HTML 다운로드됨');
+  },100);
+});
+
+function genViewer(scenes){
+  const j=JSON.stringify(scenes);
+  return '<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>VR Tour</title><script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,sans-serif;background:#000;color:#fff;height:100vh;overflow:hidden}#c{width:100%;height:100%;cursor:grab;position:fixed;top:0;left:0}#c:active{cursor:grabbing}.tb{position:fixed;top:0;left:0;right:0;height:56px;background:linear-gradient(180deg,rgba(0,0,0,.5),transparent);display:flex;align-items:center;padding:0 24px;z-index:20;gap:12px}.tt{font-size:16px;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.5)}.bg{font-size:11px;font-weight:500;background:rgba(255,255,255,.15);padding:4px 10px;border-radius:20px}.nb{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:8px;padding:8px 14px;background:rgba(0,0,0,.45);backdrop-filter:blur(16px);border-radius:16px;border:1px solid rgba(255,255,255,.08);z-index:20}.ni{width:64px;height:42px;border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid transparent;transition:all .2s;opacity:.55;position:relative}.ni:hover{opacity:.85;transform:translateY(-2px)}.ni.a{border-color:#fff;opacity:1}.ni img{width:100%;height:100%;object-fit:cover}.nl{position:absolute;bottom:0;left:0;right:0;font-size:7px;font-weight:600;text-align:center;padding:2px;background:rgba(0,0,0,.6)}.hs{position:absolute;transform:translate(-50%,-50%);z-index:10;cursor:pointer;transition:transform .2s cubic-bezier(.34,1.56,.64,1)}.hs:hover{transform:translate(-50%,-50%) scale(1.12)}.hd{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative}.hd.lk{background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.6);backdrop-filter:blur(4px)}.hd.inf{background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.5);backdrop-filter:blur(4px)}.hd svg{width:18px;height:18px;fill:#fff}.hr{position:absolute;inset:-6px;border-radius:50%;border:1.5px solid rgba(255,255,255,.3);animation:rp 2.5s ease-in-out infinite}@keyframes rp{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:0;transform:scale(1.3)}}.hl{position:absolute;top:50px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;font-weight:500;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);padding:3px 10px;border-radius:100px;opacity:0;transition:opacity .2s;pointer-events:none}.hs:hover .hl{opacity:1}.fd{position:fixed;inset:0;background:#fff;z-index:15;opacity:0;pointer-events:none;transition:opacity .35s}.fd.on{opacity:1;pointer-events:auto}.ib{position:absolute;transform:translate(-50%,-100%);margin-top:-60px;background:rgba(30,30,30,.95);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:14px;max-width:240px;z-index:25;box-shadow:0 8px 30px rgba(0,0,0,.3)}.ib h4{font-size:13px;font-weight:700;margin-bottom:4px}.ib p{font-size:12px;color:rgba(255,255,255,.6);line-height:1.5}.ix{position:absolute;top:8px;right:8px;width:18px;height:18px;border:none;background:transparent;color:rgba(255,255,255,.5);cursor:pointer;font-size:12px}</style></head><body><div id="c"></div><div class="fd" id="fd"></div><div class="tb"><span class="tt" id="tt"></span><span class="bg" id="bg"></span></div><div class="nb" id="nv"></div><script>const S='+j+';let cam,s3,ren,sph,mt,cur=0,lon=0,lat=0,dr={a:false,m:false,sx:0,sy:0,sl:0,sa:0};const hE=[];const ct=document.getElementById("c");function init(){s3=new THREE.Scene();s3.background=new THREE.Color(0x111111);cam=new THREE.PerspectiveCamera(60,ct.clientWidth/ct.clientHeight,.1,1000);cam.position.set(0,0,.1);ren=new THREE.WebGLRenderer({antialias:true,powerPreference:"high-performance"});ren.setPixelRatio(window.devicePixelRatio);ren.setSize(ct.clientWidth,ct.clientHeight);ren.toneMapping=THREE.NoToneMapping;ren.outputEncoding=THREE.sRGBEncoding;ct.appendChild(ren.domElement);const g=new THREE.SphereGeometry(500,120,80);g.scale(-1,1,1);mt=new THREE.MeshBasicMaterial({color:0x111111});sph=new THREE.Mesh(g,mt);s3.add(sph);window.addEventListener("resize",()=>{cam.aspect=ct.clientWidth/ct.clientHeight;cam.updateProjectionMatrix();ren.setSize(ct.clientWidth,ct.clientHeight)});ctrl();anim();loadS(0)}function ctrl(){const el=ren.domElement;el.addEventListener("pointerdown",e=>{dr.a=true;dr.m=false;dr.sx=e.clientX;dr.sy=e.clientY;dr.sl=lon;dr.sa=lat});document.addEventListener("pointermove",e=>{if(!dr.a)return;if(Math.abs(e.clientX-dr.sx)>3||Math.abs(e.clientY-dr.sy)>3)dr.m=true;lon=(dr.sx-e.clientX)*.15+dr.sl;lat=(e.clientY-dr.sy)*.15+dr.sa;lat=Math.max(-85,Math.min(85,lat))});document.addEventListener("pointerup",()=>{dr.a=false});el.addEventListener("wheel",e=>{e.preventDefault();cam.fov=Math.max(20,Math.min(90,cam.fov+e.deltaY*.04));cam.updateProjectionMatrix()},{passive:false})}function anim(){requestAnimationFrame(anim);const p=THREE.MathUtils.degToRad(90-lat),t=THREE.MathUtils.degToRad(lon);cam.lookAt(Math.sin(p)*Math.cos(t)*100,Math.cos(p)*100,Math.sin(p)*Math.sin(t)*100);ren.render(s3,cam);updH()}function loadS(i){const f=document.getElementById("fd");f.classList.add("on");setTimeout(()=>{cur=i;const sc=S[i];const img=new Image();img.onload=()=>{const tx=new THREE.Texture(img);tx.encoding=THREE.sRGBEncoding;tx.minFilter=THREE.LinearFilter;tx.magFilter=THREE.LinearFilter;tx.generateMipmaps=false;tx.anisotropy=ren.capabilities.getMaxAnisotropy();tx.needsUpdate=true;if(mt.map)mt.map.dispose();mt.map=tx;mt.color.set(0xffffff);mt.needsUpdate=true};img.src=sc.image;document.getElementById("tt").textContent=sc.name;document.getElementById("bg").textContent=(i+1)+"/"+S.length;mkH();mkN();setTimeout(()=>f.classList.remove("on"),100)},350)}let hL=[];function mkH(){hL.forEach(e=>e.remove());hL=[];document.querySelectorAll(".ib").forEach(e=>e.remove());S[cur].hotspots.forEach(h=>{const el=document.createElement("div");el.className="hs";const isL=h.type==="link";el.innerHTML=\'<div class="hd \'+(isL?"lk":"inf")+\'"><div class="hr"></div>\'+(isL?\'<svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>\':\'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 16v-4M12 8h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>\')+\'</div><div class="hl">\'+(h.label||"")+\'</div>\';el.addEventListener("click",e=>{e.stopPropagation();if(isL&&h.target>=0)loadS(h.target);else if(h.type==="info"){document.querySelectorAll(".ib").forEach(p=>p.remove());const b=document.createElement("div");b.className="ib";b.innerHTML=\'<button class="ix" onclick="this.parentElement.remove()">✕</button><h4>\'+(h.label||"정보")+\'</h4><p>\'+(h.info||"")+\'</p>\';b.style.left=el.style.left;b.style.top=el.style.top;ct.appendChild(b)}});el._h=h;ct.appendChild(el);hL.push(el)})}function updH(){hL.forEach(el=>{const h=el._h,p=THREE.MathUtils.degToRad(90-h.lat),t=THREE.MathUtils.degToRad(h.lon);const d=new THREE.Vector3(Math.sin(p)*Math.cos(t),Math.cos(p),Math.sin(p)*Math.sin(t));const cd=new THREE.Vector3();cam.getWorldDirection(cd);const dt=d.dot(cd);if(dt>.05){const pr=d.clone().multiplyScalar(100).project(cam);const r=ct.getBoundingClientRect();el.style.left=((pr.x*.5+.5)*r.width)+"px";el.style.top=((-pr.y*.5+.5)*r.height)+"px";el.style.display="block";el.style.opacity=Math.min(1,(dt-.05)*5)}else el.style.display="none"})}function mkN(){const nv=document.getElementById("nv");nv.innerHTML="";S.forEach((s,i)=>{const d=document.createElement("div");d.className="ni"+(i===cur?" a":"");d.innerHTML=\'<img src="\'+s.image+\'"><div class="nl">\'+s.name+\'</div>\';d.addEventListener("click",()=>loadS(i));nv.appendChild(d)})}init()<\/script></body></html>';
+}
+
+// === EVENTS ===
+document.getElementById('btn-preview').addEventListener('click',()=>setMode('preview'));
+document.getElementById('btn-edit').addEventListener('click',()=>setMode('edit'));
+document.getElementById('btn-add').addEventListener('click',()=>setMode('add'));
+document.getElementById('panel-close').addEventListener('click',()=>{closeEditor();if(APP.mode==='preview')document.getElementById('right-panel').classList.add('hidden');});
+document.getElementById('type-link').addEventListener('click',()=>{document.getElementById('type-link').classList.add('active');document.getElementById('type-info').classList.remove('active');document.getElementById('target-group').style.display='';document.getElementById('info-group').style.display='none';});
+document.getElementById('type-info').addEventListener('click',()=>{document.getElementById('type-info').classList.add('active');document.getElementById('type-link').classList.remove('active');document.getElementById('target-group').style.display='none';document.getElementById('info-group').style.display='';});
+document.getElementById('hs-save').addEventListener('click',saveEditor);
+document.getElementById('hs-delete').addEventListener('click',()=>{if(APP.editingHotspot){deleteHotspot(APP.editingHotspot);showToast('삭제됨');}});
+
+let tt;function showToast(m){const el=document.getElementById('toast');el.textContent=m;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),2500);}
+
+initThree();
+</script>
+</body>
+</html>

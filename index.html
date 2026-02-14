@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SKP - VR TOUR</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --black: #111111;
+  --white: #ffffff;
+  --gray-50: #fafafa;
+  --gray-100: #f5f5f5;
+  --gray-200: #e5e5e5;
+  --gray-300: #d4d4d4;
+  --gray-400: #a3a3a3;
+  --gray-500: #737373;
+  --gray-600: #525252;
+  --gray-900: #171717;
+  --purple: #9333ea;
+}
+
+body {
+  font-family: 'Noto Sans KR', -apple-system, sans-serif;
+  background: var(--white);
+  color: var(--black);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============ HEADER ============ */
+.header {
+  height: 64px;
+  border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  position: sticky;
+  top: 0;
+  background: var(--white);
+  z-index: 100;
+}
+
+.logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  color: var(--black);
+  text-decoration: none;
+  margin-right: 40px;
+  flex-shrink: 0;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--gray-300);
+  border-radius: 6px;
+  padding: 0 0 0 12px;
+  height: 40px;
+  width: 360px;
+  gap: 8px;
+  transition: border-color 0.2s;
+}
+
+.search-bar:focus-within { border-color: var(--black); }
+
+.search-bar input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--black);
+  background: transparent;
+}
+
+.search-bar input::placeholder { color: var(--gray-400); }
+
+.search-bar-icon {
+  width: 36px;
+  height: 36px;
+  background: var(--black);
+  border-radius: 0 4px 4px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.search-bar-icon svg { stroke: var(--white); }
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  margin-left: auto;
+}
+
+.header-nav a {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--black);
+  text-decoration: none;
+  letter-spacing: 0.5px;
+  transition: opacity 0.15s;
+}
+
+.header-nav a:hover { opacity: 0.6; }
+.header-nav a.active { font-weight: 700; }
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: 32px;
+}
+
+.btn-admin {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--black);
+  color: var(--white);
+  border: none;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-admin:hover { opacity: 0.85; }
+
+.btn-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--purple);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: var(--white);
+  cursor: pointer; border: none;
+}
+
+.btn-logout {
+  font-size: 13px; font-weight: 500; color: var(--gray-500);
+  background: none; border: none; cursor: pointer; font-family: inherit;
+}
+.btn-logout:hover { color: var(--black); }
+
+/* ============ PAGE TITLE ============ */
+.page-title-section {
+  padding: 48px 32px 0;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 56px;
+  font-weight: 400;
+  letter-spacing: -1.5px;
+  line-height: 1.15;
+}
+
+.page-subtitle {
+  font-size: 15px;
+  color: var(--gray-500);
+  margin-top: 12px;
+}
+
+/* ============ FILTERS ============ */
+.filters-section {
+  padding: 28px 32px 0;
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-select {
+  padding: 8px 32px 8px 18px;
+  border: 1.5px solid var(--gray-300);
+  border-radius: 100px;
+  background: var(--white);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--black);
+  cursor: pointer;
+  appearance: none;
+  outline: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%23111'%3E%3Cpath d='M5 7L0 2h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+
+.filter-btn {
+  padding: 8px 18px;
+  border: 1.5px solid var(--gray-300);
+  border-radius: 100px;
+  background: var(--white);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--black);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.filter-btn:hover { border-color: var(--black); }
+.filter-btn.active { background: var(--black); color: var(--white); border-color: var(--black); }
+
+.tour-count { font-size: 14px; color: var(--gray-500); margin-left: auto; }
+
+.btn-create-tour {
+  padding: 9px 22px;
+  background: var(--black);
+  color: var(--white);
+  border: none;
+  border-radius: 100px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-create-tour:hover { opacity: 0.85; transform: translateY(-1px); }
+
+/* ============ TOUR GRID ============ */
+.tour-grid {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 32px 80px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+}
+
+.tour-card {
+  cursor: pointer;
+  transition: opacity 0.2s;
+  position: relative;
+  animation: fadeUp 0.4s ease both;
+}
+
+.tour-card:hover { opacity: 0.88; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tour-card:nth-child(1) { animation-delay: 0s; }
+.tour-card:nth-child(2) { animation-delay: 0.04s; }
+.tour-card:nth-child(3) { animation-delay: 0.08s; }
+.tour-card:nth-child(4) { animation-delay: 0.12s; }
+.tour-card:nth-child(5) { animation-delay: 0.16s; }
+.tour-card:nth-child(6) { animation-delay: 0.2s; }
+.tour-card:nth-child(7) { animation-delay: 0.24s; }
+.tour-card:nth-child(8) { animation-delay: 0.28s; }
+.tour-card:nth-child(9) { animation-delay: 0.32s; }
+.tour-card:nth-child(10) { animation-delay: 0.36s; }
+
+.tour-card-thumb {
+  width: 100%;
+  aspect-ratio: 1/1;
+  background: var(--gray-100);
+  position: relative;
+  overflow: hidden;
+}
+
+.tour-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.tour-card-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tour-action-btn {
+  width: 30px; height: 30px;
+  border: 1.5px solid var(--gray-300);
+  background: var(--white);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tour-action-btn:hover { border-color: var(--black); }
+.tour-action-btn svg { width: 13px; height: 13px; stroke: var(--gray-600); fill: none; stroke-width: 2; }
+
+.tour-card-play {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.12);
+  opacity: 0; transition: opacity 0.25s;
+}
+
+.tour-card:hover .tour-card-play { opacity: 1; }
+
+.play-icon {
+  width: 48px; height: 48px;
+  background: var(--white);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}
+
+.play-icon svg { fill: var(--black); width: 18px; height: 18px; margin-left: 3px; }
+
+.tour-thumb-content {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: var(--gray-100);
+}
+
+.tour-thumb-icon { font-size: 36px; margin-bottom: 6px; opacity: 0.35; }
+.tour-thumb-text { font-size: 11px; color: var(--gray-400); }
+
+.tour-card-info {
+  padding: 10px 2px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tour-card-name { font-size: 13px; font-weight: 500; line-height: 1.3; }
+.tour-card-year { font-size: 12px; color: var(--gray-400); margin-top: 1px; }
+
+.tour-card-badge {
+  padding: 3px 8px;
+  background: var(--black);
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.tour-card-badge.draft { background: var(--gray-200); color: var(--gray-600); }
+
+.tour-card-stats {
+  display: flex; gap: 10px; margin-top: 2px;
+}
+
+.tour-stat { font-size: 11px; color: var(--gray-400); display: flex; align-items: center; gap: 3px; }
+
+/* ============ MISC ============ */
+.ctx-menu {
+  position: fixed; background: var(--white);
+  border: 1px solid var(--gray-200); border-radius: 8px;
+  padding: 6px; min-width: 180px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+  z-index: 200; display: none;
+}
+
+.ctx-menu.show { display: block; }
+
+.ctx-item {
+  padding: 10px 14px; font-size: 13px;
+  color: var(--black); border-radius: 6px;
+  cursor: pointer; transition: background 0.1s;
+  display: flex; align-items: center; gap: 10px;
+}
+
+.ctx-item:hover { background: var(--gray-50); }
+.ctx-item.danger { color: #dc2626; }
+.ctx-item.danger:hover { background: #fef2f2; }
+
+.empty-state { grid-column: 1 / -1; text-align: center; padding: 100px 40px; }
+.empty-title { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 400; margin-bottom: 12px; }
+.empty-desc { font-size: 14px; color: var(--gray-500); margin-bottom: 28px; }
+
+.toast {
+  position: fixed; bottom: 28px; left: 50%;
+  transform: translateX(-50%) translateY(60px);
+  background: var(--black); color: var(--white);
+  padding: 12px 24px; border-radius: 8px;
+  font-size: 14px; font-weight: 500; z-index: 300;
+  opacity: 0; transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  pointer-events: none;
+}
+
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.footer {
+  border-top: 1px solid var(--gray-200);
+  padding: 32px;
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.footer-copy { font-size: 13px; color: var(--gray-400); }
+.footer-links { display: flex; gap: 20px; }
+.footer-links a { font-size: 13px; color: var(--gray-400); text-decoration: none; }
+.footer-links a:hover { color: var(--black); }
+
+@media (max-width: 1200px) { .tour-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 900px) { .tour-grid { grid-template-columns: repeat(3, 1fr); } .search-bar { width: 240px; } .header-nav { gap: 20px; } }
+@media (max-width: 600px) { .tour-grid { grid-template-columns: repeat(2, 1fr); padding: 16px; } .header { padding: 0 16px; } .page-title { font-size: 36px; } }
+</style>
+</head>
+<body>
+
+<!-- 헤더는 기존 SKP 웹에서 합칠 때 사용 -->
+
+<section class="page-title-section">
+  <h1 class="page-title">VR Tour</h1>
+  <p class="page-subtitle">360° 가상 투어를 만들고 관리하세요.</p>
+</section>
+
+<div class="filters-section">
+  <div class="search-bar" style="margin-right:10px;">
+    <input type="text" id="search-input" placeholder="투어 검색...">
+    <div class="search-bar-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+  </div>
+  <select class="filter-select" id="sort-select">
+    <option value="newest">최신순</option>
+    <option value="name">이름순</option>
+    <option value="views">조회수순</option>
+  </select>
+  <button class="filter-btn active" data-filter="all" onclick="setFilter(this,'all')">전체</button>
+  <button class="filter-btn" data-filter="public" onclick="setFilter(this,'public')">Public</button>
+  <button class="filter-btn" data-filter="draft" onclick="setFilter(this,'draft')">Draft</button>
+  <span class="tour-count" id="tour-count"></span>
+  <button class="btn-create-tour" id="btn-create">+ CREATE TOUR</button>
+</div>
+
+<div class="tour-grid" id="tour-grid"></div>
+
+<footer class="footer">
+  <span class="footer-copy">© 2026 SKP. All rights reserved.</span>
+  <div class="footer-links"><a href="#">Privacy Policy</a><a href="#">Terms of Service</a><a href="#">Contact</a></div>
+</footer>
+
+<div class="ctx-menu" id="ctx-menu">
+  <div class="ctx-item" data-action="open">👁 투어 보기</div>
+  <div class="ctx-item" data-action="edit">✏️ 편집</div>
+  <div class="ctx-item" data-action="duplicate">📋 복제</div>
+  <div class="ctx-item" data-action="share">🔗 공유 링크</div>
+  <div class="ctx-item danger" data-action="delete">🗑 삭제</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'vrtour_tours';
+let currentFilter = 'all';
+
+function loadTours() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; } }
+function saveTours(t) { localStorage.setItem(STORAGE_KEY, JSON.stringify(t)); }
+
+let tours = loadTours();
+// Clear old sample data
+if (tours.length && tours[0].id === 't1') { localStorage.removeItem(STORAGE_KEY); tours = []; }
+
+function setFilter(el, f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderTours();
+}
+
+function renderTours() {
+  const grid = document.getElementById('tour-grid');
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const sort = document.getElementById('sort-select').value;
+
+  let list = tours.filter(t => {
+    if (currentFilter !== 'all' && t.status !== currentFilter) return false;
+    return !q || t.name.toLowerCase().includes(q);
+  });
+
+  list.sort((a,b) => sort==='name' ? a.name.localeCompare(b.name) : sort==='views' ? b.views-a.views : new Date(b.updated)-new Date(a.updated));
+
+  document.getElementById('tour-count').textContent = list.length + '개 투어';
+
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty-state"><div class="empty-title">No Tours Found</div><div class="empty-desc">${q?'다른 키워드로 검색해 보세요.':'첫 번째 VR 투어를 만들어 보세요.'}</div>${!q?'<button class="btn-create-tour" onclick="openEditor()">+ CREATE TOUR</button>':''}</div>`;
+    return;
+  }
+
+  grid.innerHTML = '';
+  list.forEach((t,i) => {
+    const c = document.createElement('div');
+    c.className = 'tour-card';
+    c.style.animationDelay = `${i*0.04}s`;
+    c.innerHTML = `
+      <div class="tour-card-thumb">
+        <div class="tour-thumb-content"><div class="tour-thumb-icon">🌐</div><div class="tour-thumb-text">${t.scenes}개 장면</div></div>
+        <div class="tour-card-actions">
+          <button class="tour-action-btn" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+          <button class="tour-action-btn" onclick="event.stopPropagation();showMenu(event,'${t.id}')"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button>
+        </div>
+        <div class="tour-card-play"><div class="play-icon"><svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg></div></div>
+      </div>
+      <div class="tour-card-info">
+        <div>
+          <div class="tour-card-name">${t.name}</div>
+          <div class="tour-card-year">${t.updated.slice(0,4)}</div>
+        </div>
+        <span class="tour-card-badge ${t.status}">${t.status}</span>
+      </div>`;
+    c.addEventListener('click', () => showToast(`"${t.name}" 투어 열기`));
+    grid.appendChild(c);
+  });
+}
+
+let menuTourId = null;
+function showMenu(e,id) {
+  menuTourId = id;
+  const m = document.getElementById('ctx-menu');
+  m.style.left = Math.min(e.clientX, innerWidth-200)+'px';
+  m.style.top = Math.min(e.clientY, innerHeight-200)+'px';
+  m.classList.add('show');
+}
+
+document.addEventListener('click', () => document.getElementById('ctx-menu').classList.remove('show'));
+
+document.querySelectorAll('.ctx-item').forEach(el => el.addEventListener('click', () => {
+  const t = tours.find(x=>x.id===menuTourId); if(!t) return;
+  switch(el.dataset.action) {
+    case 'edit': openEditor(menuTourId); break;
+    case 'duplicate':
+      tours.push({...t, id:'t'+Date.now(), name:t.name+' (복사)', views:0, status:'draft', updated:new Date().toISOString().split('T')[0]});
+      saveTours(tours); renderTours(); showToast('복제됨'); break;
+    case 'share': showToast('링크 복사됨'); break;
+    case 'delete': tours=tours.filter(x=>x.id!==menuTourId); saveTours(tours); renderTours(); showToast('삭제됨'); break;
+    default: showToast(`"${t.name}" 투어 열기`);
+  }
+}));
+
+function openEditor(id) { window.location.href = 'vr-tour-editor.html' + (id ? '?tour='+id : ''); }
+
+document.getElementById('btn-create').addEventListener('click', () => openEditor());
+document.getElementById('search-input').addEventListener('input', () => renderTours());
+document.getElementById('sort-select').addEventListener('change', () => renderTours());
+
+let tt; function showToast(m) { const e=document.getElementById('toast'); e.textContent=m; e.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>e.classList.remove('show'),2500); }
+
+renderTours();
+</script>
+</body>
+</html>
