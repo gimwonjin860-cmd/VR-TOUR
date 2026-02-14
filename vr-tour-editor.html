@@ -159,6 +159,8 @@ select.field-input{appearance:none;background-image:url("data:image/svg+xml,%3Cs
   </div>
   <div class="res-banner" id="res-banner">⚠ 낮은 해상도 (<span id="res-info"></span>) — 4096×2048 이상 권장</div>
   <button class="btn btn-secondary" id="export-btn" style="position:absolute;top:16px;right:16px;z-index:20;display:none;flex:none;padding:8px 18px;border-radius:100px;">내보내기</button>
+  <button class="btn btn-primary" id="save-btn" style="position:absolute;top:16px;right:110px;z-index:20;display:none;flex:none;padding:8px 18px;border-radius:100px;">💾 저장</button>
+  <span id="save-status" style="position:absolute;top:20px;right:200px;z-index:20;font-size:11px;color:var(--g400);display:none;"></span>
   <div class="toast" id="toast"></div>
   <div class="drop-hint" id="drop-hint"><div class="drop-hint-text">여기에 놓으면 핫스팟 추가</div></div>
   <div class="empty-state" id="empty-state">
@@ -293,6 +295,7 @@ function loadSceneView(index,savedLon,savedLat){
     document.getElementById('empty-state').style.display='none';
     document.getElementById('mode-bar').style.display='flex';
     document.getElementById('export-btn').style.display='flex';
+    document.getElementById('save-btn').style.display='flex';
     setTimeout(()=>overlay.classList.remove('active'),100);
   },350);
 }
@@ -302,7 +305,8 @@ function deleteScene(index){
   APP.scenes.forEach(sc=>{sc.hotspots=sc.hotspots.filter(h=>h.target!==removed.id)});
   if(!APP.scenes.length){
     APP.currentScene=-1;if(sphereMaterial.map)sphereMaterial.map.dispose();sphereMaterial.map=null;sphereMaterial.color.set(0xf5f5f5);sphereMaterial.needsUpdate=true;
-    document.getElementById('empty-state').style.display='flex';document.getElementById('mode-bar').style.display='none';document.getElementById('export-btn').style.display='none';document.getElementById('res-banner').style.display='none';
+    document.getElementById('empty-state').style.display='flex';document.getElementById('mode-bar').style.display='none';document.getElementById('export-btn').style.display='none';document.getElementById('save-btn').style.display='none';document.getElementById('save-status').style.display='none';document.getElementById('res-banner').style.display='none';
+    clearDB();
   }else loadSceneView(Math.min(index,APP.scenes.length-1));
   renderSceneList();
 }
@@ -641,7 +645,94 @@ document.getElementById('btn-back-origin').addEventListener('click',()=>{
 
 let tt;function showToast(m){const el=document.getElementById('toast');el.textContent=m;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),2500);}
 
-initThree();
+// === IndexedDB SAVE/LOAD ===
+const DB_NAME='vrtour_db';
+const DB_VER=1;
+const STORE='tours';
+
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(DB_NAME,DB_VER);
+    req.onupgradeneeded=e=>{const db=e.target.result;if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE);};
+    req.onsuccess=e=>resolve(e.target.result);
+    req.onerror=e=>reject(e.target.error);
+  });
+}
+
+async function saveToDB(){
+  try{
+    const db=await openDB();
+    const data={
+      scenes:APP.scenes.map(sc=>({
+        id:sc.id,name:sc.name,imageData:sc.imageData,
+        width:sc.width,height:sc.height,
+        hotspots:sc.hotspots
+      })),
+      currentScene:APP.currentScene,
+      nextId:APP.nextId,
+      viewLon,viewLat
+    };
+    const tx=db.transaction(STORE,'readwrite');
+    tx.objectStore(STORE).put(data,'current');
+    await new Promise((r,j)=>{tx.oncomplete=r;tx.onerror=j;});
+    const st=document.getElementById('save-status');
+    st.textContent='저장됨 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+    st.style.display='block';
+    return true;
+  }catch(e){console.error('Save error:',e);return false;}
+}
+
+async function loadFromDB(){
+  try{
+    const db=await openDB();
+    const tx=db.transaction(STORE,'readonly');
+    const req=tx.objectStore(STORE).get('current');
+    return new Promise((resolve,reject)=>{
+      req.onsuccess=()=>resolve(req.result||null);
+      req.onerror=()=>reject(req.error);
+    });
+  }catch(e){console.error('Load error:',e);return null;}
+}
+
+async function clearDB(){
+  try{
+    const db=await openDB();
+    const tx=db.transaction(STORE,'readwrite');
+    tx.objectStore(STORE).delete('current');
+    await new Promise((r,j)=>{tx.oncomplete=r;tx.onerror=j;});
+  }catch(e){console.error('Clear error:',e);}
+}
+
+// Auto-save every 30 seconds
+let autoSaveTimer;
+function startAutoSave(){
+  clearInterval(autoSaveTimer);
+  autoSaveTimer=setInterval(()=>{if(APP.scenes.length>0)saveToDB();},30000);
+}
+
+// Save button
+document.getElementById('save-btn').addEventListener('click',async()=>{
+  const ok=await saveToDB();
+  showToast(ok?'저장 완료!':'저장 실패');
+});
+
+// Init: load saved data then start Three.js
+async function init(){
+  initThree();
+  const saved=await loadFromDB();
+  if(saved&&saved.scenes&&saved.scenes.length>0){
+    APP.scenes=saved.scenes;
+    APP.nextId=saved.nextId||APP.scenes.length+1;
+    viewLon=saved.viewLon||0;
+    viewLat=saved.viewLat||0;
+    renderSceneList();
+    loadSceneView(saved.currentScene||0);
+    showToast('이전 작업을 불러왔습니다 ('+APP.scenes.length+'개 장면)');
+  }
+  startAutoSave();
+}
+
+init();
 </script>
 </body>
 </html>
